@@ -74,7 +74,7 @@ export const login = async (req, res) => {
 
         if (user.role !== role) {
             return res.status(403).json({
-                message: "Role mismatch",
+                message: "You don't have the necessary role to access this resource",
                 success: false,
             });
         }
@@ -133,19 +133,16 @@ export const logout = (req, res) => {
 export const updateProfile = async (req, res) => {
     try {
         const { fullName, email, phoneNumber, bio, skills } = req.body;
-        const file = req.files;
 
-        if (!fullName || !email || !phoneNumber || !bio || !skills) {
-            return res.status(400).json({
-                message: "Missing required fields",
-                success: false,
-            });
+        let skillsArray;
+        if (skills) {
+            skillsArray = skills.split(",");
         }
 
-        const skillsArray = skills.split(",");
-        const userId = req.id;
-        let user = await User.findById(userId);
+        const userId = req.id; // set by auth middleware
+        console.log("req.id:", userId);
 
+        const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({
                 message: "User not found",
@@ -153,11 +150,11 @@ export const updateProfile = async (req, res) => {
             });
         }
 
-        user.fullName = fullName;
-        user.email = email;
-        user.phoneNumber = phoneNumber;
-        user.profile.bio = bio;
-        user.profile.skills = skillsArray;
+        if (fullName) user.fullName = fullName;
+        if (email) user.email = email;
+        if (phoneNumber) user.phoneNumber = phoneNumber;
+        if (bio) user.profile.bio = bio;
+        if (skillsArray) user.profile.skills = skillsArray;
 
         await user.save();
 
@@ -176,7 +173,7 @@ export const updateProfile = async (req, res) => {
             success: true,
         });
     } catch (error) {
-        console.error(error);
+        console.error("Update profile error:", error);
         res.status(500).json({
             message: "Server error updating profile",
             success: false,
