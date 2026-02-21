@@ -1,10 +1,11 @@
 import { Company } from "../models/company.model.js";
 export const registerCompany = async (req, res) => {
     try {
-        const { companyName } = req.body;
-        if (!companyName) {
-            return res.status(400).json({ message: "Company name is required "});
+        const { companyName, description, website, location } = req.body;
+        if (!companyName || !description) {
+            return res.status(400).json({ message: "Company name and description are required"});
         }
+
         let company = await Company.findOne({ name: companyName });
         if (company) {
             return res.status(400).json({ message: "Company already exists" });
@@ -12,6 +13,9 @@ export const registerCompany = async (req, res) => {
         
         company = await Company.create({
             name: companyName,
+            description,
+            website,
+            location,
             userId: req.id
         });
         return res.status(201).json({
@@ -21,8 +25,10 @@ export const registerCompany = async (req, res) => {
         });
     } catch (error) {
         console.error(error);
+        res.status(500).json({ message: "Server error" });
     }
 };
+
 
 export const getAllCompanies = async (req, res) => {
     try {
@@ -31,7 +37,12 @@ export const getAllCompanies = async (req, res) => {
         if (!companies) {
             return res.status(404).json({ message: "No Companies Found"});
         }
-    } catch (error) {
+        return res.status(200).json({
+            companies,
+            success: true
+        });
+    }
+    catch (error) {
         console.error(error);
     }
 }
@@ -58,8 +69,13 @@ export const updateCompany = async (req, res) => {
 
         const updateData = { name, description, website, location };
 
-        const company = await Company.findByIdAndUpdate(req.params.id, updateData);
-
+        const company = await Company.findByIdAndUpdate(req.params.id, updateData, {
+            new:true
+        });
+        if (!company) {
+            return res.status(404).json({ message: "Company not found" });
+        }
+        return res.status(200).json({ message: "Company updated" });
     } catch (error) {
         console.error(error);
     }
