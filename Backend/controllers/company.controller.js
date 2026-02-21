@@ -13,8 +13,54 @@ export const registerCompany = async (req, res) => {
         company = await Company.create({
             name: companyName,
             userId: req.id
-        })
+        });
+        return res.status(201).json({
+            message: "Company created successfully",
+            company,
+            success: true,
+        });
     } catch (error) {
         console.error(error);
     }
 };
+
+export const getAllCompanies = async (req, res) => {
+    try {
+        const userId = req.id; // login user id
+        const companies = await Company.find({ userId });
+        if (!companies) {
+            return res.status(404).json({ message: "No Companies Found"});
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+// get company by id
+export const getComapanyById = async (req, res) => {
+    try {
+        const companyId = req.params.id;
+        const company = await Company.findById(companyId);
+        if (!company) {
+            return res.status(404).json({ message: "Company not found" });
+        }
+        return res.status(200).json({ company, success: true });
+    } catch(error) {
+        console.error(error);
+    }
+};
+
+// update company details
+export const updateCompany = async (req, res) => {
+    try {
+        const { name, website, description, location } = req.body;
+        const file = req.file;
+
+        const updateData = { name, description, website, location };
+
+        const company = await Company.findByIdAndUpdate(req.params.id, updateData);
+
+    } catch (error) {
+        console.error(error);
+    }
+}
