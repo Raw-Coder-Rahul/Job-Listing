@@ -42,11 +42,13 @@ const jobSchema = new mongoose.Schema({
         ref: "User",
         required: true,
     },
-    application: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Application",
-        default: null,
-    }
-});
+    applications: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Application",
+        }
+    ],
+},{ timestamps: true }
+);
 
 export const Job = mongoose.model("Job", jobSchema);
