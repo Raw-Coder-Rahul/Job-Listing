@@ -1,4 +1,5 @@
-import mongoose  from "mongoose";
+import mongoose from "mongoose";
+
 const companySchema = new mongoose.Schema({
     name: {
         type: String,
@@ -16,13 +17,13 @@ const companySchema = new mongoose.Schema({
         type: String,
     },
     logo: {
-        type: String, // url for logo
+        type: String,
     },
-    userId: [{
+    userId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: "User",
         required: true,
-    }]
-},{timestamps: true,});
+    }
+}, { timestamps: true });
 
 export const Company = mongoose.model("Company", companySchema);

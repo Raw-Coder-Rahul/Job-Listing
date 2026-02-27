@@ -1,13 +1,22 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useDispatch, useSelector } from "react-redux";
 import { USER_API_ENDPOINT } from "../utils/data";
-import { useToast } from "../components/Toaster"; // make sure Toaster has named export
-import { UploadCloud, CheckCircle, AlertCircle, User } from "lucide-react";
+import { useToast } from "../components/Toaster";
+import { CheckCircle, UploadCloud, Eye, EyeOff, User } from "lucide-react";
+import Input from "../components/Input";
+import Button from "../components/Button";
+import RadioGroup from "../components/RadioGroup";
+import Avatar from "../components/Avatar";
+import { setLoading, setUser, setToken } from "../redux/authSlice";
 
 const Register = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { toast } = useToast();
+
+  const loading = useSelector((state) => state.auth.loading);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -17,25 +26,55 @@ const Register = () => {
     role: "Student",
   });
   const [photo, setPhoto] = useState(null);
+  const [preview, setPreview] = useState(null);
   const [agree, setAgree] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
-  const handleChange = (e) => {
+  useEffect(() => {
+    if (!photo) return setPreview(null);
+    const objectUrl = URL.createObjectURL(photo);
+    setPreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [photo]);
+
+  const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
 
   const handlePhotoChange = (e) => {
-    if (e.target.files && e.target.files[0]) setPhoto(e.target.files[0]);
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type))
+      return toast("Only JPG, PNG or WEBP allowed", "error");
+    if (file.size > 2 * 1024 * 1024)
+      return toast("Image must be less than 2MB", "error");
+    setPhoto(file);
   };
+
+  const isStrongPassword =
+    /^(?=.*[A-Z])(?=.*[0-9])(?=.{6,})/.test(formData.password);
+
+  const isFormValid =
+    formData.fullName &&
+    formData.email &&
+    formData.phoneNumber &&
+    formData.password &&
+    isStrongPassword &&
+    agree;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!agree) return toast("You must agree to terms & conditions", "error");
+    if (!agree) return toast("You must agree to terms", "error");
+    if (!isStrongPassword)
+      return toast(
+        "Password must contain 1 uppercase letter, 1 number and 6+ characters",
+        "error"
+      );
+
+    dispatch(setLoading(true));
 
     try {
-      setLoading(true);
       const data = new FormData();
-      Object.keys(formData).forEach((key) => data.append(key, formData[key]));
+      Object.entries(formData).forEach(([key, val]) => data.append(key, val));
       if (photo) data.append("profilePhoto", photo);
 
       const res = await axios.post(`${USER_API_ENDPOINT}register`, data, {
@@ -44,6 +83,9 @@ const Register = () => {
       });
 
       if (res.data.success) {
+        dispatch(setUser(res.data.user || null));
+        dispatch(setToken(res.data.token || null));
+
         toast(
           <span className="flex items-center space-x-2">
             <CheckCircle className="w-5 h-5 text-green-600" />
@@ -53,101 +95,81 @@ const Register = () => {
         );
         navigate("/login");
       } else {
-        toast(
-          <span className="flex items-center space-x-2">
-            <AlertCircle className="w-5 h-5 text-red-600" />
-            <span>{res.data.message}</span>
-          </span>,
-          "error"
-        );
+        toast(res.data.message, "error");
       }
     } catch (err) {
       console.error("Register error:", err);
-      toast(
-        <span className="flex items-center space-x-2">
-          <AlertCircle className="w-5 h-5 text-red-600" />
-          <span>Unexpected error occurred. Please try again.</span>
-        </span>,
-        "error"
-      );
+      toast(err.response?.data?.message || "Registration failed", "error");
     } finally {
-      setLoading(false);
+      dispatch(setLoading(false));
     }
   };
 
+  const roleOptions = [
+    { label: "Student", value: "Student" },
+    { label: "Recruiter", value: "Recruiter" },
+  ];
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 sm:px-6 lg:px-8 transition-colors duration-500">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 transition-colors duration-500">
       <div className="w-full max-w-md bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg transition-colors duration-500">
         <h2 className="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-gray-200 flex items-center justify-center space-x-2">
           <User className="w-6 h-6 text-blue-600 dark:text-red-400" />
           <span>Register</span>
         </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Full Name */}
-          <div className="relative">
-            <input
-              type="text"
-              name="fullName"
-              placeholder="Full Name"
-              value={formData.fullName}
-              onChange={handleChange}
-              required
-              className="w-full px-10 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 dark:focus:ring-red-500 transition"
-            />
-            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-          </div>
 
-          {/* Email */}
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Full Name"
+            value={formData.fullName}
+            onChange={handleChange}
+            placeholder="Enter your full name"
+            type="text"
+            name="fullName"
+          />
+          <Input
+            label="Email"
             value={formData.email}
             onChange={handleChange}
-            required
-            className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 dark:focus:ring-red-500 transition"
+            placeholder="Enter your email"
+            type="email"
+            name="email"
           />
-          {/* Phone */}
-          <input
-            type="tel"
-            name="phoneNumber"
-            placeholder="Phone Number"
+          <Input
+            label="Phone Number"
             value={formData.phoneNumber}
             onChange={handleChange}
-            required
-            className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 dark:focus:ring-red-500 transition"
-          />
-          {/* Password */}
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 dark:focus:ring-red-500 transition"
+            placeholder="Enter your phone"
+            type="tel"
+            name="phoneNumber"
           />
 
-          {/* Role */}
-          <div className="flex space-x-4">
-            {["Student", "Recruiter"].map((r) => (
-              <label key={r} className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  name="role"
-                  value={r}
-                  checked={formData.role === r}
-                  onChange={handleChange}
-                  className="accent-blue-600 dark:accent-red-600"
-                />
-                <span className="text-gray-700 dark:text-gray-300">{r}</span>
-              </label>
-            ))}
+          <div className="relative">
+            <Input
+              label="Password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Enter your password"
+              type={passwordVisible ? "text" : "password"}
+              name="password"
+            />
+            <span
+              className="absolute right-3 top-10 cursor-pointer"
+              onClick={() => setPasswordVisible(!passwordVisible)}
+            >
+              {passwordVisible ? <EyeOff size={20} /> : <Eye size={20} />}
+            </span>
           </div>
 
-          {/* Profile Photo Upload */}
-          <label className="flex items-center space-x-2 cursor-pointer text-gray-700 dark:text-gray-300">
-            <UploadCloud className="w-5 h-5" />
+          <RadioGroup
+            label="Role"
+            options={roleOptions}
+            selected={formData.role}
+            onChange={(val) => setFormData((prev) => ({ ...prev, role: val }))}
+          />
+
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <UploadCloud size={20} />
             <span>Upload Profile Photo</span>
             <input
               type="file"
@@ -156,51 +178,45 @@ const Register = () => {
               className="hidden"
             />
           </label>
-          {photo && (
-            <img
-              src={URL.createObjectURL(photo)}
-              alt="Preview"
-              className="mt-2 w-24 h-24 rounded-full object-cover"
-            />
-          )}
 
-          {/* Terms */}
-          <label className="flex items-center space-x-2 text-gray-700 dark:text-gray-300">
+          {preview && <Avatar src={preview} name={formData.fullName} size="xl" />}
+
+          {/* Updated Terms & Privacy Checkbox */}
+          <label className="flex items-center space-x-2">
             <input
               type="checkbox"
               checked={agree}
               onChange={(e) => setAgree(e.target.checked)}
-              className="accent-blue-600 dark:accent-red-600"
             />
-            <span>
-              Agree to{" "}
-              <a href="#" className="text-blue-600 dark:text-red-400 hover:underline">
-                terms & conditions
-              </a>
+            <span className="text-gray-700 dark:text-gray-300 text-sm">
+              I agree to the{" "}
+              <Link
+                to="/terms-services"
+                className="text-blue-600 dark:text-red-400 hover:underline"
+              >
+                Terms & Services
+              </Link>{" "}
+              and{" "}
+              <Link
+                to="/privacy-policy"
+                className="text-blue-600 dark:text-red-400 hover:underline"
+              >
+                Privacy Policy
+              </Link>
             </span>
           </label>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 bg-blue-600 dark:bg-red-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-red-700 transition font-medium flex justify-center items-center space-x-2"
-          >
-            {loading ? (
-              <>
-                <span>Registering...</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle className="w-5 h-5" />
-                <span>Register</span>
-              </>
-            )}
-          </button>
+          <Button type="submit" disabled={!isFormValid || loading}>
+            {loading ? "Registering..." : "Register"}
+          </Button>
         </form>
 
-        <p className="mt-4 text-center text-gray-700 dark:text-gray-300">
+        <p className="mt-4 text-center text-gray-700 dark:text-gray-300 text-sm">
           Already have an account?{" "}
-          <Link to="/login" className="text-blue-600 dark:text-red-400 hover:underline">
+          <Link
+            to="/login"
+            className="text-blue-600 dark:text-red-400 hover:underline"
+          >
             Login
           </Link>
         </p>

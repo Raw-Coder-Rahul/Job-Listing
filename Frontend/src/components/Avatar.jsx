@@ -7,32 +7,19 @@ const sizes = {
   xl: "w-24 h-24 text-xl",
 };
 
-const Avatar = ({
-  src,
-  alt = "Avatar",
-  name = "",
-  size = "md",
-  className = "",
-}) => {
-  // Generate initials if no image
+const Avatar = ({ src, alt = "Avatar", name = "", size = "md", className = "" }) => {
   const getInitials = (name) => {
     if (!name) return "";
     const words = name.split(" ");
-    return words.length > 1
-      ? words[0][0] + words[1][0]
-      : words[0][0];
+    return words.length > 1 ? words[0][0] + words[1][0] : words[0][0];
   };
 
   return (
     <div
-      className={`relative inline-flex items-center justify-center rounded-full bg-gray-200 text-gray-700 font-semibold overflow-hidden ${sizes[size]} ${className}`}
+      className={`relative inline-flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold overflow-hidden ${sizes[size]} ${className}`}
     >
       {src ? (
-        <img
-          src={src}
-          alt={alt}
-          className="w-full h-full object-cover"
-        />
+        <img src={src} alt={alt} className="w-full h-full object-cover" />
       ) : (
         <span>{getInitials(name)}</span>
       )}

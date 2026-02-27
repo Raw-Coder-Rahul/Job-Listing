@@ -1,12 +1,17 @@
 import express from "express";
 import authenticateToken from "../middleware/isAuthenticated.js";
-import { getAllCompanies, getComapanyById, registerCompany, updateCompany } from "../controllers/company.controller.js";
+import { 
+  getAllCompanies, 
+  getCompanyById, 
+  registerCompany, 
+  updateCompany 
+} from "../controllers/company.controller.js";
 
 const router = express.Router();
 
-router.route("/register").post(authenticateToken, registerCompany);
-router.route("/get").get(authenticateToken, getAllCompanies);
-router.route("/get/:id").get(authenticateToken, getComapanyById);
-router.route("/update/:id").put(authenticateToken, updateCompany);
+router.post("/register", authenticateToken, registerCompany);
+router.get("/get", authenticateToken, getAllCompanies);
+router.get("/get/:id", authenticateToken, getCompanyById);
+router.put("/update/:id", authenticateToken, updateCompany);
 
 export default router;
